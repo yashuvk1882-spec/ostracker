@@ -41,6 +41,59 @@ export default function StudyHub({ state, updateState, selectedDate }: StudyHubP
   const [deadlineTitle, setDeadlineTitle] = useState('');
   const [deadlineDueDate, setDeadlineDueDate] = useState('');
 
+  // Editing state for subjects
+  const [editingSubjectId, setEditingSubjectId] = useState<string | null>(null);
+  const [editSubjectName, setEditSubjectName] = useState('');
+  const [editSubjectColor, setEditSubjectColor] = useState('#3B82F6');
+  const [editSubjectCategory, setEditSubjectCategory] = useState('');
+
+  // Editing state for flashcards
+  const [editingCardId, setEditingCardId] = useState<string | null>(null);
+  const [editFlashQuestion, setEditFlashQuestion] = useState('');
+  const [editFlashAnswer, setEditFlashAnswer] = useState('');
+
+  const startEditingFlashcard = (card: Flashcard) => {
+    setEditingCardId(card.id);
+    setEditFlashQuestion(card.question);
+    setEditFlashAnswer(card.answer);
+  };
+
+  const saveFlashcardEdit = (id: string) => {
+    if (!editFlashQuestion.trim() || !editFlashAnswer.trim()) return;
+    const updated = state.flashcards.map(c => {
+      if (c.id === id) {
+        return { ...c, question: editFlashQuestion, answer: editFlashAnswer };
+      }
+      return c;
+    });
+    updateState({ ...state, flashcards: updated });
+    setEditingCardId(null);
+  };
+
+  const startEditingSubject = (item: SubjectItem) => {
+    setEditingSubjectId(item.id);
+    setEditSubjectName(item.name);
+    setEditSubjectColor(item.color);
+    setEditSubjectCategory(item.category || '');
+  };
+
+  const saveSubjectEdit = (id: string) => {
+    if (!editSubjectName.trim()) return;
+    const updated = state.subjects.map(s => {
+      if (s.id === id) {
+        return {
+          ...s,
+          name: editSubjectName,
+          color: editSubjectColor,
+          category: editSubjectCategory
+        };
+      }
+      return s;
+    });
+    updateState({ ...state, subjects: updated });
+    setEditingSubjectId(null);
+  };
+
   const colors = [
     '#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', 
     '#EC4899', '#14B8A6', '#6366F1', '#06B6D4'
@@ -213,6 +266,71 @@ export default function StudyHub({ state, updateState, selectedDate }: StudyHubP
         <div className="space-y-1.5 max-h-[300px] overflow-y-auto pr-1 flex-1" id="subjects-list-scroll">
           {state.subjects.map((item) => {
             const isSelected = item.id === selectedSubjectId;
+            const isEditing = editingSubjectId === item.id;
+
+            if (isEditing) {
+              return (
+                <div 
+                  key={item.id}
+                  onClick={(e) => e.stopPropagation()}
+                  className="p-3 rounded-xl border border-teal-500 bg-teal-50/10 space-y-2 text-left"
+                  id={`subject-item-edit-${item.id}`}
+                >
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-bold text-gray-400 uppercase font-mono">Track Name</label>
+                    <input 
+                      type="text"
+                      value={editSubjectName}
+                      onChange={e => setEditSubjectName(e.target.value)}
+                      className="w-full px-2 py-1 bg-white border border-gray-250 rounded-md text-xs focus:ring-1 focus:ring-teal-500"
+                    />
+                  </div>
+                  
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-bold text-gray-400 uppercase font-mono">Category</label>
+                    <input 
+                      type="text"
+                      value={editSubjectCategory}
+                      onChange={e => setEditSubjectCategory(e.target.value)}
+                      className="w-full px-2 py-1 bg-white border border-gray-250 rounded-md text-xs focus:ring-1 focus:ring-teal-500"
+                      placeholder="Computer Science, Maths..."
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between gap-1.5 pt-1">
+                    <div className="flex gap-1">
+                      {colors.map(c => (
+                        <button
+                          key={c}
+                          type="button"
+                          onClick={() => setEditSubjectColor(c)}
+                          className={`w-4 h-4 rounded-full border transition ${editSubjectColor === c ? 'scale-125 ring-1 ring-teal-500' : 'opacity-85'}`}
+                          style={{ backgroundColor: c }}
+                        />
+                      ))}
+                    </div>
+                    
+                    <div className="flex gap-1">
+                      <button 
+                        type="button"
+                        onClick={() => setEditingSubjectId(null)}
+                        className="px-2 py-0.5 text-[9px] font-bold text-gray-500 bg-white border border-gray-200.5 rounded-md"
+                      >
+                        Cancel
+                      </button>
+                      <button 
+                        type="button"
+                        onClick={() => saveSubjectEdit(item.id)}
+                        className="px-2 py-0.5 text-[9px] font-black bg-teal-600 text-white rounded-md hover:bg-teal-700"
+                      >
+                        Save
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            }
+
             return (
               <div 
                 key={item.id}
@@ -221,7 +339,7 @@ export default function StudyHub({ state, updateState, selectedDate }: StudyHubP
                   setActiveCardIndex(0);
                   setIsFlipped(false);
                 }}
-                className={`flex items-center justify-between p-3 rounded-xl border transition-all cursor-pointer ${
+                className={`group flex items-center justify-between p-3 rounded-xl border transition-all cursor-pointer ${
                   isSelected 
                     ? 'bg-emerald-50/40 border-teal-500/30 font-semibold' 
                     : 'border-transparent hover:bg-gray-50 text-gray-600'
@@ -236,19 +354,32 @@ export default function StudyHub({ state, updateState, selectedDate }: StudyHubP
                   </div>
                 </div>
 
-                {state.subjects.length > 1 && (
+                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                   <button 
                     onClick={(e) => {
                       e.stopPropagation();
                       e.preventDefault();
-                      handleDeleteSubject(item.id);
+                      startEditingSubject(item);
                     }}
-                    className="p-1.5 text-gray-400 hover:text-rose-600 hover:bg-rose-50 border border-transparent hover:border-rose-100 rounded-lg transition-all duration-250 cursor-pointer flex items-center justify-center"
-                    title={`Delete track: ${item.name}`}
+                    className="p-1 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 border border-transparent rounded-md transition-all cursor-pointer"
+                    title={`Edit track: ${item.name}`}
                   >
-                    <Trash2 className="w-4 h-4" />
+                    <Edit3 className="w-3.5 h-3.5" />
                   </button>
-                )}
+                  {state.subjects.length > 1 && (
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        handleDeleteSubject(item.id);
+                      }}
+                      className="p-1 text-gray-400 hover:text-rose-600 hover:bg-rose-50 border border-transparent rounded-md transition-all cursor-pointer"
+                      title={`Delete track: ${item.name}`}
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
               </div>
             );
           })}
@@ -494,26 +625,67 @@ export default function StudyHub({ state, updateState, selectedDate }: StudyHubP
                     {subjectCards.length > 0 ? (
                       <div className="flex-1 flex flex-col justify-between space-y-3">
                         {/* Flip Card Sandbox */}
-                        <div 
-                          onClick={() => setIsFlipped(!isFlipped)}
-                          className={`min-h-[140px] border rounded-2xl p-5 flex flex-col justify-center items-center text-center cursor-pointer transition-all duration-300 transform ${
-                            isFlipped 
-                              ? 'bg-amber-50/50 border-amber-300 hover:border-amber-400 rotate-y-180' 
-                              : 'bg-white border-blue-100 shadow-2xs hover:border-blue-300'
-                          }`}
-                        >
-                          <span className={`text-[10px] uppercase font-bold px-1.5 py-0.5 rounded-full ${isFlipped ? 'bg-amber-100 text-amber-800' : 'bg-blue-100 text-blue-800'}`}>
-                            {isFlipped ? 'Answer Key' : 'Reveal Question'}
-                          </span>
-                          
-                          <p className={`text-xs mt-3 ${isFlipped ? 'text-gray-700 font-sans' : 'text-gray-800 font-bold font-sans'}`}>
-                            {isFlipped ? subjectCards[activeCardIndex].answer : subjectCards[activeCardIndex].question}
-                          </p>
-
-                          <div className="text-[9px] text-gray-400 italic mt-4">
-                            Tap card to flip details
+                        {editingCardId === subjectCards[activeCardIndex].id ? (
+                          <div className="min-h-[140px] border border-indigo-300 bg-indigo-50/10 rounded-2xl p-4 flex flex-col justify-between space-y-2 text-left">
+                            <div className="space-y-1">
+                              <label className="text-[9px] font-bold text-gray-500 uppercase font-mono">Question</label>
+                              <input 
+                                type="text"
+                                value={editFlashQuestion}
+                                onChange={e => setEditFlashQuestion(e.target.value)}
+                                className="w-full px-2 py-1 bg-white border border-gray-250 rounded-md text-xs focus:ring-1 focus:ring-teal-500"
+                                placeholder="e.g. What is polymorphism?"
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <label className="text-[9px] font-bold text-gray-500 uppercase font-mono">Answer</label>
+                              <textarea
+                                rows={2}
+                                value={editFlashAnswer}
+                                onChange={e => setEditFlashAnswer(e.target.value)}
+                                className="w-full px-2 py-1 bg-white border border-gray-250 rounded-md text-xs focus:ring-1 focus:ring-teal-500"
+                                placeholder="Answer explanation..."
+                              />
+                            </div>
+                            <div className="flex justify-end gap-1.5 pt-1 border-t border-indigo-100/50">
+                              <button 
+                                type="button"
+                                onClick={() => setEditingCardId(null)}
+                                className="px-2 py-0.5 text-[9px] font-bold text-gray-500 bg-white border border-gray-200 rounded-md cursor-pointer"
+                              >
+                                Cancel
+                              </button>
+                              <button 
+                                type="button"
+                                onClick={() => saveFlashcardEdit(subjectCards[activeCardIndex].id)}
+                                className="px-2 py-0.5 text-[9px] font-black bg-indigo-600 text-white rounded-md hover:bg-indigo-700 cursor-pointer"
+                              >
+                                Save Card
+                              </button>
+                            </div>
                           </div>
-                        </div>
+                        ) : (
+                          <div 
+                            onClick={() => setIsFlipped(!isFlipped)}
+                            className={`min-h-[140px] border rounded-2xl p-5 flex flex-col justify-center items-center text-center cursor-pointer transition-all duration-300 transform ${
+                              isFlipped 
+                                ? 'bg-amber-50/50 border-amber-300 hover:border-amber-400 rotate-y-180' 
+                                : 'bg-white border-blue-100 shadow-2xs hover:border-blue-300'
+                            }`}
+                          >
+                            <span className={`text-[10px] uppercase font-bold px-1.5 py-0.5 rounded-full ${isFlipped ? 'bg-amber-100 text-amber-800' : 'bg-blue-100 text-blue-800'}`}>
+                              {isFlipped ? 'Answer Key' : 'Reveal Question'}
+                            </span>
+                            
+                            <p className={`text-xs mt-3 ${isFlipped ? 'text-gray-700 font-sans' : 'text-gray-800 font-bold font-sans'}`}>
+                              {isFlipped ? subjectCards[activeCardIndex].answer : subjectCards[activeCardIndex].question}
+                            </p>
+
+                            <div className="text-[9px] text-gray-400 italic mt-4">
+                              Tap card to flip details
+                            </div>
+                          </div>
+                        )}
 
                         {/* Card Slidewipe Controls */}
                         <div className="flex justify-between items-center bg-gray-50 py-1.5 px-3 rounded-xl border border-gray-100">
@@ -532,13 +704,22 @@ export default function StudyHub({ state, updateState, selectedDate }: StudyHubP
                             {activeCardIndex + 1} / {subjectCards.length}
                           </div>
 
-                          <button
-                            onClick={() => handleDeleteFlashcard(subjectCards[activeCardIndex].id)}
-                            className="p-1 text-gray-400 hover:text-red-500"
-                            title="Delete current card"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
+                          <div className="flex items-center gap-1">
+                            <button
+                              onClick={() => startEditingFlashcard(subjectCards[activeCardIndex])}
+                              className="p-1 text-gray-400 hover:text-indigo-600 cursor-pointer"
+                              title="Edit current card"
+                            >
+                              <Edit3 className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteFlashcard(subjectCards[activeCardIndex].id)}
+                              className="p-1 text-gray-400 hover:text-red-500 cursor-pointer"
+                              title="Delete current card"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
 
                           <button
                             disabled={activeCardIndex === subjectCards.length - 1}

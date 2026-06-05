@@ -33,6 +33,42 @@ export default function DeadlinesCalendar({ state, updateState, selectedDate }: 
   const [newCategory, setNewCategory] = useState<string>('study'); // subject id or quick categorical code
   const [newNotes, setNewNotes] = useState('');
 
+  // Editing state for deadlines
+  const [editingDlId, setEditingDlId] = useState<string | null>(null);
+  const [editDlTitle, setEditDlTitle] = useState('');
+  const [editDlPriority, setEditDlPriority] = useState<'high' | 'medium' | 'low'>('medium');
+  const [editDlCategory, setEditDlCategory] = useState('study');
+  const [editDlDueDate, setEditDlDueDate] = useState('');
+  const [editDlNotes, setEditDlNotes] = useState('');
+
+  const startEditingDl = (dl: StudyDeadline) => {
+    setEditingDlId(dl.id);
+    setEditDlTitle(dl.title);
+    setEditDlPriority((dl as any).priority || 'medium');
+    setEditDlCategory(dl.subjectId || 'study');
+    setEditDlDueDate(dl.dueDate);
+    setEditDlNotes((dl as any).notes || '');
+  };
+
+  const saveDlEdit = (dlId: string) => {
+    if (!editDlTitle.trim() || !editDlDueDate) return;
+    const updated = state.deadlines.map(d => {
+      if (d.id === dlId) {
+        return {
+          ...d,
+          title: editDlTitle,
+          priority: editDlPriority,
+          subjectId: editDlCategory,
+          dueDate: editDlDueDate,
+          notes: editDlNotes
+        } as any;
+      }
+      return d;
+    });
+    updateState({ ...state, deadlines: updated });
+    setEditingDlId(null);
+  };
+
   // Filtering / Sorting states
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'completed' | 'overdue'>('all');
@@ -785,6 +821,93 @@ export default function DeadlinesCalendar({ state, updateState, selectedDate }: 
                   const catMeta = getCategoryMeta(dl.subjectId);
                   const countdown = getCountdownLabel(dl.dueDate, dl.completed);
 
+                  if (editingDlId === dl.id) {
+                    return (
+                      <div 
+                        key={dl.id}
+                        className="p-3.5 rounded-xl border border-indigo-300 bg-indigo-50/10 shadow-xs flex flex-col gap-3 text-left"
+                        id={`dl-card-edit-${dl.id}`}
+                      >
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          <div className="space-y-1">
+                            <label className="text-[9px] font-bold text-gray-500 uppercase font-mono">Milestone Title</label>
+                            <input 
+                              type="text"
+                              value={editDlTitle}
+                              onChange={e => setEditDlTitle(e.target.value)}
+                              className="w-full px-2 py-1 bg-white border border-gray-250 rounded-md text-xs focus:ring-1 focus:ring-teal-500"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-[9px] font-bold text-gray-500 uppercase font-mono">Respective Subject</label>
+                            <select 
+                              value={editDlCategory}
+                              onChange={e => setEditDlCategory(e.target.value)}
+                              className="w-full px-2 py-1 bg-white border border-gray-250 rounded-md text-xs focus:ring-1 focus:ring-teal-500 font-bold"
+                            >
+                              <option value="general">🌍 General/Miscellaneous</option>
+                              {state.subjects.map(s => (
+                                <option key={s.id} value={s.id}>📚 {s.name}</option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          <div className="space-y-1">
+                            <label className="text-[9px] font-bold text-gray-500 uppercase font-mono">Due Date</label>
+                            <input 
+                              type="date"
+                              value={editDlDueDate}
+                              onChange={e => setEditDlDueDate(e.target.value)}
+                              className="w-full px-2 py-1 bg-white border border-gray-250 rounded-md text-xs focus:ring-1 focus:ring-teal-500"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-[9px] font-bold text-gray-500 uppercase font-mono">Priority</label>
+                            <select 
+                              value={editDlPriority}
+                              onChange={e => setEditDlPriority(e.target.value as 'high' | 'medium' | 'low')}
+                              className="w-full px-2 py-1 bg-white border border-gray-250 rounded-md text-xs focus:ring-1 focus:ring-teal-500 font-bold"
+                            >
+                              <option value="high">🔴 High Priority</option>
+                              <option value="medium">🟡 Mid Priority</option>
+                              <option value="low">🟢 Low Priority</option>
+                            </select>
+                          </div>
+                        </div>
+
+                        <div className="space-y-1">
+                          <label className="text-[9px] font-bold text-gray-500 uppercase font-mono">Milestone Notes</label>
+                          <input 
+                            type="text"
+                            value={editDlNotes}
+                            onChange={e => setEditDlNotes(e.target.value)}
+                            className="w-full px-2 py-1 bg-white border border-gray-250 rounded-md text-xs focus:ring-1 focus:ring-teal-500"
+                            placeholder="Add helper notes..."
+                          />
+                        </div>
+
+                        <div className="flex justify-end gap-1.5 pt-2 border-t border-indigo-100/60">
+                          <button 
+                            type="button"
+                            onClick={() => setEditingDlId(null)}
+                            className="px-2.5 py-1 text-[10px] font-bold text-gray-500 hover:bg-gray-100 rounded-md border border-gray-150 bg-white"
+                          >
+                            Cancel
+                          </button>
+                          <button 
+                            type="button"
+                            onClick={() => saveDlEdit(dl.id)}
+                            className="px-3 py-1 text-[10px] font-black bg-indigo-600 hover:bg-indigo-700 text-white rounded-md shadow-3xs"
+                          >
+                            Save Details
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  }
+
                   return (
                     <div 
                       key={dl.id}
@@ -864,14 +987,23 @@ export default function DeadlinesCalendar({ state, updateState, selectedDate }: 
                           <ListTodo className="w-3.5 h-3.5 text-indigo-500" /> Sync to Focus List
                         </button>
 
-                        <button
-                          onClick={() => handleDeleteDeadline(dl.id)}
-                          className="text-gray-400 hover:text-red-600 transition-colors py-1 px-2 hover:bg-red-50/50 rounded-md cursor-pointer font-medium"
-                          title="Delete Milestone permanently"
-                          id={`dl-delete-${dl.id}`}
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => startEditingDl(dl)}
+                            className="text-gray-400 hover:text-indigo-600 transition-colors py-1 px-2 hover:bg-indigo-50 rounded-md cursor-pointer font-bold"
+                            title="Edit Milestone"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => handleDeleteDeadline(dl.id)}
+                            className="text-gray-400 hover:text-red-600 transition-colors py-1 px-2 hover:bg-red-50/50 rounded-md cursor-pointer font-medium"
+                            title="Delete Milestone permanently"
+                            id={`dl-delete-${dl.id}`}
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       </div>
 
                     </div>

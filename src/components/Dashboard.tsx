@@ -6,7 +6,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
-  Calendar, CheckCircle2, Clock, Plus, Trash2, 
+  Calendar, CheckCircle2, Clock, Plus, Trash2, Edit3,
   ChevronLeft, ChevronRight, Award, Flame, AlertCircle, Sparkles, BookOpen, Activity, Coffee
 } from 'lucide-react';
 import { TrackerState, TimetableEvent, FocusTask, TimetableCategory } from '../types';
@@ -29,6 +29,66 @@ export default function Dashboard({ state, updateState, selectedDate, setSelecte
 
   const [taskTitle, setTaskTitle] = useState('');
   const [taskPriority, setTaskPriority] = useState<'high' | 'medium' | 'low'>('medium');
+
+  // Editing state for events
+  const [editingEventId, setEditingEventId] = useState<string | null>(null);
+  const [editEventTitle, setEditEventTitle] = useState('');
+  const [editEventCategory, setEditEventCategory] = useState<TimetableCategory>('study');
+  const [editEventStartTime, setEditEventStartTime] = useState('09:00');
+  const [editEventEndTime, setEditEventEndTime] = useState('11:00');
+
+  // Editing state for tasks
+  const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
+  const [editTaskTitle, setEditTaskTitle] = useState('');
+  const [editTaskPriority, setEditTaskPriority] = useState<'high' | 'medium' | 'low'>('medium');
+
+  const startEditingEvent = (item: TimetableEvent) => {
+    setEditingEventId(item.id);
+    setEditEventTitle(item.title);
+    setEditEventCategory(item.category);
+    setEditEventStartTime(item.startTime);
+    setEditEventEndTime(item.endTime);
+  };
+
+  const saveEventEdit = (eventId: string) => {
+    if (!editEventTitle.trim()) return;
+    const updated = state.timetable.map(evt => {
+      if (evt.id === eventId) {
+        return {
+          ...evt,
+          title: editEventTitle,
+          category: editEventCategory,
+          startTime: editEventStartTime,
+          endTime: editEventEndTime
+        };
+      }
+      return evt;
+    });
+    updateState({ ...state, timetable: updated });
+    setEditingEventId(null);
+  };
+
+  const startEditingTask = (task: FocusTask) => {
+    setEditingTaskId(task.id);
+    setEditTaskTitle(task.title);
+    setEditTaskPriority(task.priority);
+  };
+
+  const saveTaskEdit = (taskId: string) => {
+    if (!editTaskTitle.trim()) return;
+    const updated = state.focusQueue.map(t => {
+      if (t.id === taskId) {
+        return {
+          ...t,
+          title: editTaskTitle,
+          priority: editTaskPriority
+        };
+      }
+      return t;
+    });
+    updateState({ ...state, focusQueue: updated });
+    setEditingTaskId(null);
+  };
 
   // Quick navigation
   const changeDate = (days: number) => {
@@ -424,40 +484,118 @@ export default function Dashboard({ state, updateState, selectedDate, setSelecte
                     </span>
 
                     {/* Timeline Item Card */}
-                    <div className={`p-3 rounded-xl border ${style.bg} ${style.border} flex items-start justify-between gap-3 group-hover:shadow-xs transition-all ${item.completed ? 'opacity-65' : ''}`}>
-                      <div className="flex items-start gap-2.5">
-                        {/* Checkbox button */}
-                        <div className="pt-0.5" id={`timetable-check-${item.id}`}>
-                          <input 
-                            type="checkbox"
-                            checked={!!item.completed}
-                            onChange={() => toggleEventComplete(item.id)}
-                            className="w-4 h-4 rounded-sm border-gray-300 text-teal-600 focus:ring-teal-500 focus:ring-offset-0 cursor-pointer"
-                            title="Mark task block as completed"
-                          />
+                    {editingEventId === item.id ? (
+                      <div className="p-3.5 rounded-xl border border-indigo-300 bg-indigo-50/20 shadow-xs flex flex-col gap-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          <div className="space-y-1">
+                            <label className="text-[9px] font-bold text-gray-500 uppercase font-mono">Title</label>
+                            <input 
+                              type="text"
+                              value={editEventTitle}
+                              onChange={e => setEditEventTitle(e.target.value)}
+                              className="w-full px-2 py-1 bg-white border border-gray-250 rounded-md text-xs focus:ring-1 focus:ring-teal-500"
+                              placeholder="Study, Work, Exercise..."
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-[9px] font-bold text-gray-500 uppercase font-mono">Category</label>
+                            <select 
+                              value={editEventCategory}
+                              onChange={e => setEditEventCategory(e.target.value as TimetableCategory)}
+                              className="w-full px-2 py-1 bg-white border border-gray-250 rounded-md text-xs focus:ring-1 focus:ring-teal-500"
+                            >
+                              <option value="study font-bold">🎓 Study</option>
+                              <option value="gym font-bold">💪 Gym / Athletic</option>
+                              <option value="meals font-bold">🍳 Nutrition & Meals</option>
+                              <option value="work font-bold">💼 Active Work</option>
+                              <option value="rest font-bold">🛌 Deep Rest</option>
+                            </select>
+                          </div>
                         </div>
 
-                        <div className={`p-1.5 rounded-lg bg-white ${style.text} shadow-2xs`}>
-                          <Icon className="w-4 h-4" />
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="space-y-1">
+                            <label className="text-[9px] font-bold text-gray-500 uppercase font-mono">Starts</label>
+                            <input 
+                              type="time" 
+                              value={editEventStartTime}
+                              onChange={e => setEditEventStartTime(e.target.value)}
+                              className="w-full px-2 py-1 bg-white border border-gray-250 rounded-md text-xs"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-[9px] font-bold text-gray-500 uppercase font-mono">Ends</label>
+                            <input 
+                              type="time" 
+                              value={editEventEndTime}
+                              onChange={e => setEditEventEndTime(e.target.value)}
+                              className="w-full px-2 py-1 bg-white border border-gray-250 rounded-md text-xs"
+                            />
+                          </div>
                         </div>
-                        <div>
-                          <h4 className={`text-xs font-bold text-gray-800 transition-all ${item.completed ? 'line-through text-gray-400' : ''}`}>{item.title}</h4>
-                          <p className={`text-[10px] font-semibold mt-0.5 ${style.text} flex items-center gap-1`}>
-                            <Clock className="w-3 h-3" />
-                            {item.startTime} - {item.endTime}
-                            <span className="capitalize font-mono opacity-60">· {item.category}</span>
-                          </p>
+
+                        <div className="flex justify-end gap-1.5 pt-2 border-t border-indigo-100/55">
+                          <button 
+                            type="button"
+                            onClick={() => setEditingEventId(null)}
+                            className="px-2.5 py-1 text-[10px] font-bold text-gray-500 hover:bg-gray-100 rounded-md border border-gray-200.5 shadow-3xs cursor-pointer"
+                          >
+                            Cancel
+                          </button>
+                          <button 
+                            type="button"
+                            onClick={() => saveEventEdit(item.id)}
+                            className="px-3 py-1 text-[10px] font-black bg-indigo-600 hover:bg-indigo-700 text-white rounded-md shadow-2xs cursor-pointer"
+                          >
+                            Save Changes
+                          </button>
                         </div>
                       </div>
+                    ) : (
+                      <div className={`p-3 rounded-xl border ${style.bg} ${style.border} flex items-start justify-between gap-3 group-hover:shadow-xs transition-all ${item.completed ? 'opacity-65' : ''}`}>
+                        <div className="flex items-start gap-2.5">
+                          {/* Checkbox button */}
+                          <div className="pt-0.5" id={`timetable-check-${item.id}`}>
+                            <input 
+                              type="checkbox"
+                              checked={!!item.completed}
+                              onChange={() => toggleEventComplete(item.id)}
+                              className="w-4 h-4 rounded-sm border-gray-300 text-teal-600 focus:ring-teal-500 focus:ring-offset-0 cursor-pointer"
+                              title="Mark task block as completed"
+                            />
+                          </div>
 
-                      <button
-                        onClick={() => deleteEvent(item.id)}
-                        className="p-1 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                        title="Delete scheduling block"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
+                          <div className={`p-1.5 rounded-lg bg-white ${style.text} shadow-2xs`}>
+                            <Icon className="w-4 h-4" />
+                          </div>
+                          <div className="text-left">
+                            <h4 className={`text-xs font-bold text-gray-800 transition-all ${item.completed ? 'line-through text-gray-400' : ''}`}>{item.title}</h4>
+                            <p className={`text-[10px] font-semibold mt-0.5 ${style.text} flex items-center gap-1`}>
+                              <Clock className="w-3 h-3" />
+                              {item.startTime} - {item.endTime}
+                              <span className="capitalize font-mono opacity-60">· {item.category}</span>
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button
+                            onClick={() => startEditingEvent(item)}
+                            className="p-1 text-gray-400 hover:text-indigo-600 transition"
+                            title="Edit scheduling block"
+                          >
+                            <Edit3 className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => deleteEvent(item.id)}
+                            className="p-1 text-gray-400 hover:text-red-500 transition"
+                            title="Delete scheduling block"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 );
               })
@@ -519,6 +657,50 @@ export default function Dashboard({ state, updateState, selectedDate, setSelecte
                   medium: 'border-l-4 border-l-amber-500 text-amber-700 bg-amber-50/30',
                   low: 'border-l-4 border-l-emerald-500 text-emerald-700 bg-emerald-50/30'
                 };
+                if (editingTaskId === task.id) {
+                  return (
+                    <div 
+                      key={task.id}
+                      className="p-3 bg-indigo-50/20 border border-indigo-250 rounded-xl space-y-2"
+                      id={`task-card-edit-${task.id}`}
+                    >
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={editTaskTitle}
+                          onChange={e => setEditTaskTitle(e.target.value)}
+                          className="flex-1 px-2.5 py-1 bg-white border border-gray-200.5 rounded-lg text-xs focus:ring-1 focus:ring-teal-500"
+                        />
+                        <select
+                          value={editTaskPriority}
+                          onChange={e => setEditTaskPriority(e.target.value as 'high' | 'medium' | 'low')}
+                          className="px-2 py-1 bg-white border border-gray-200.5 rounded-lg text-xs text-gray-700 font-bold"
+                        >
+                          <option value="high">🔴 High</option>
+                          <option value="medium">🟡 Mid</option>
+                          <option value="low">🟢 Low</option>
+                        </select>
+                      </div>
+                      <div className="flex justify-end gap-1.5 pt-1">
+                        <button 
+                          type="button"
+                          onClick={() => setEditingTaskId(null)}
+                          className="px-2 py-1 text-[10px] font-bold text-gray-500 hover:bg-gray-100 rounded-md border border-gray-200"
+                        >
+                          Cancel
+                        </button>
+                        <button 
+                          type="button"
+                          onClick={() => saveTaskEdit(task.id)}
+                          className="px-2.5 py-1 text-[10px] font-black bg-indigo-600 hover:bg-indigo-700 text-white rounded-md shadow-2xs"
+                        >
+                          Save
+                        </button>
+                      </div>
+                    </div>
+                  );
+                }
+
                 return (
                   <div 
                     key={task.id}
@@ -537,12 +719,21 @@ export default function Dashboard({ state, updateState, selectedDate, setSelecte
                       </span>
                     </div>
 
-                    <button
-                      onClick={() => deleteTask(task.id)}
-                      className="p-1 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button
+                        onClick={() => startEditingTask(task)}
+                        className="p-1 text-gray-400 hover:text-indigo-600 transition"
+                        title="Edit task title and priority"
+                      >
+                        <Edit3 className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={() => deleteTask(task.id)}
+                        className="p-1 text-gray-400 hover:text-red-500 transition"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </div>
                 );
               })
