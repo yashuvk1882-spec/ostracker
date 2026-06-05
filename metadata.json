@@ -1,0 +1,6 @@
+{
+  "name": "Daily Life Tracker",
+  "description": "An elegant personal productivity suite integrating a daily timetable, focus queue, study hub, gym logger, nutrition tracker, habit builder, and sleep log with weekly analytics.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
