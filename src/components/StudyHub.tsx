@@ -75,6 +75,11 @@ export default function StudyHub({ state, updateState, selectedDate }: StudyHubP
     const remainingCards = state.flashcards.filter(c => c.subjectId !== id);
     const remainingDeadlines = state.deadlines.filter(d => d.subjectId !== id);
 
+    // If we are deleting the currently selected subject, pick a new one first
+    if (selectedSubjectId === id && nextSubjects.length > 0) {
+      setSelectedSubjectId(nextSubjects[0].id);
+    }
+
     updateState({
       ...state,
       subjects: nextSubjects,
@@ -82,10 +87,6 @@ export default function StudyHub({ state, updateState, selectedDate }: StudyHubP
       flashcards: remainingCards,
       deadlines: remainingDeadlines
     });
-
-    if (selectedSubjectId === id && nextSubjects.length > 0) {
-      setSelectedSubjectId(nextSubjects[0].id);
-    }
   };
 
   const handleUpdateSubjectNotes = (notes: string) => {
@@ -239,12 +240,13 @@ export default function StudyHub({ state, updateState, selectedDate }: StudyHubP
                   <button 
                     onClick={(e) => {
                       e.stopPropagation();
+                      e.preventDefault();
                       handleDeleteSubject(item.id);
                     }}
-                    className="p-1 text-gray-300 hover:text-red-500 hover:bg-gray-100 rounded-md transition-colors"
-                    title="Delete track"
+                    className="p-1.5 text-gray-400 hover:text-rose-600 hover:bg-rose-50 border border-transparent hover:border-rose-100 rounded-lg transition-all duration-250 cursor-pointer flex items-center justify-center"
+                    title={`Delete track: ${item.name}`}
                   >
-                    <Trash2 className="w-3.5 h-3.5" />
+                    <Trash2 className="w-4 h-4" />
                   </button>
                 )}
               </div>
