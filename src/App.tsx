@@ -6,7 +6,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Compass, BookOpen, Dumbbell, Utensils, CalendarDays, 
-  Moon, TrendingUp, Sliders, Paperclip, CheckCircle2, User, Github
+  Moon, TrendingUp, Sliders, Paperclip, CheckCircle2, User, Github, Calendar
 } from 'lucide-react';
 
 // Subcomponents
@@ -19,12 +19,13 @@ import SleepEnergy from './components/SleepEnergy';
 import WeeklyReview from './components/WeeklyReview';
 import Settings from './components/Settings';
 import FilesHub from './components/FilesHub';
+import DeadlinesCalendar from './components/DeadlinesCalendar';
 
 // State Helpers
 import { TrackerState } from './types';
 import { loadState, saveState, getLocalDateString } from './utils/storage';
 
-type AppTab = 'dashboard' | 'study' | 'gym' | 'nutrition' | 'habits' | 'sleep' | 'files' | 'weekly' | 'settings';
+type AppTab = 'dashboard' | 'study' | 'gym' | 'nutrition' | 'habits' | 'sleep' | 'files' | 'weekly' | 'deadlines' | 'settings';
 
 export default function App() {
   const [state, setState] = useState<TrackerState>(() => loadState());
@@ -49,6 +50,7 @@ export default function App() {
     { id: 'habits', label: 'Habit Lab', icon: CalendarDays, color: 'text-violet-600 border-violet-500' },
     { id: 'sleep', label: 'Sleep Pad', icon: Moon, color: 'text-indigo-600 border-indigo-500' },
     { id: 'files', label: 'Files Space', icon: Paperclip, color: 'text-cyan-600 border-cyan-500' },
+    { id: 'deadlines', label: 'Milestones', icon: Calendar, color: 'text-indigo-600 border-indigo-500' },
     { id: 'weekly', label: 'Analytics', icon: TrendingUp, color: 'text-rose-600 border-rose-500' },
     { id: 'settings', label: 'Settings', icon: Sliders, color: 'text-slate-600 border-slate-505' },
   ] as const;
@@ -159,6 +161,14 @@ export default function App() {
 
           {activeTab === 'files' && (
             <FilesHub 
+              state={state} 
+              updateState={updateState} 
+              selectedDate={selectedDate}
+            />
+          )}
+
+          {activeTab === 'deadlines' && (
+            <DeadlinesCalendar 
               state={state} 
               updateState={updateState} 
               selectedDate={selectedDate}

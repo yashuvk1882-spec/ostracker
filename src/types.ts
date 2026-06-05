@@ -20,6 +20,7 @@ export interface TimetableEvent {
   endTime: string; // HH:MM
   title: string;
   category: TimetableCategory;
+  completed?: boolean;
 }
 
 export interface FocusTask {
@@ -61,6 +62,8 @@ export interface StudyDeadline {
   title: string;
   dueDate: string; // YYYY-MM-DD
   completed: boolean;
+  priority?: 'high' | 'medium' | 'low';
+  notes?: string;
 }
 
 export interface WorkoutExerciseSet {

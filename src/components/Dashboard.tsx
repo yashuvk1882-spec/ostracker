@@ -142,6 +142,16 @@ export default function Dashboard({ state, updateState, selectedDate, setSelecte
     updateState({ ...state, timetable: remaining });
   };
 
+  const toggleEventComplete = (eventId: string) => {
+    const updated = state.timetable.map(evt => {
+      if (evt.id === eventId) {
+        return { ...evt, completed: !evt.completed };
+      }
+      return evt;
+    });
+    updateState({ ...state, timetable: updated });
+  };
+
   // Category styles dictionary
   const categoryStyles: Record<TimetableCategory, { bg: string, text: string, border: string, icon: any }> = {
     study: { bg: 'bg-blue-50/70', text: 'text-blue-700', border: 'border-blue-200', icon: BookOpen },
@@ -409,16 +419,29 @@ export default function Dashboard({ state, updateState, selectedDate, setSelecte
                 return (
                   <div key={item.id} className="relative group" id={`time-event-${item.id}`}>
                     {/* Ring Indicator */}
-                    <span className={`absolute -left-[21px] top-1.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-white border-2 border-teal-600`} />
+                    <span className={`absolute -left-[21px] top-1.5 flex h-3.5 w-3.5 items-center justify-center rounded-full border-2 transition-colors duration-200 ${item.completed ? 'bg-emerald-500 border-emerald-600' : 'bg-white border-teal-600'}`}>
+                      {item.completed && <span className="w-1.5 h-1.5 rounded-full bg-white" />}
+                    </span>
 
                     {/* Timeline Item Card */}
-                    <div className={`p-3 rounded-xl border ${style.bg} ${style.border} flex items-start justify-between gap-3 group-hover:shadow-xs transition-all`}>
+                    <div className={`p-3 rounded-xl border ${style.bg} ${style.border} flex items-start justify-between gap-3 group-hover:shadow-xs transition-all ${item.completed ? 'opacity-65' : ''}`}>
                       <div className="flex items-start gap-2.5">
+                        {/* Checkbox button */}
+                        <div className="pt-0.5" id={`timetable-check-${item.id}`}>
+                          <input 
+                            type="checkbox"
+                            checked={!!item.completed}
+                            onChange={() => toggleEventComplete(item.id)}
+                            className="w-4 h-4 rounded-sm border-gray-300 text-teal-600 focus:ring-teal-500 focus:ring-offset-0 cursor-pointer"
+                            title="Mark task block as completed"
+                          />
+                        </div>
+
                         <div className={`p-1.5 rounded-lg bg-white ${style.text} shadow-2xs`}>
                           <Icon className="w-4 h-4" />
                         </div>
                         <div>
-                          <h4 className="text-xs font-bold text-gray-800">{item.title}</h4>
+                          <h4 className={`text-xs font-bold text-gray-800 transition-all ${item.completed ? 'line-through text-gray-400' : ''}`}>{item.title}</h4>
                           <p className={`text-[10px] font-semibold mt-0.5 ${style.text} flex items-center gap-1`}>
                             <Clock className="w-3 h-3" />
                             {item.startTime} - {item.endTime}
