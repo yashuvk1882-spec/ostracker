@@ -6,7 +6,8 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { 
-  User, ShieldAlert, Sparkles, Sliders, Save, Download, Upload, Trash2, Heart, RotateCcw
+  User, ShieldAlert, Sparkles, Sliders, Save, Download, Upload, Trash2, Heart, RotateCcw,
+  Bell, Volume2, ShieldCheck, HelpCircle, History
 } from 'lucide-react';
 import { TrackerState, Profile } from '../types';
 import { generateInitialState } from '../utils/storage';
@@ -27,6 +28,96 @@ export default function Settings({ state, updateState }: SettingsProps) {
   // Paste backup code state
   const [backupJsonText, setBackupJsonText] = useState('');
   const [feedbackMsg, setFeedbackMsg] = useState<{ text: string, type: 'success' | 'error' } | null>(null);
+
+  // Browser Notifications System states
+  const [notiPermission, setNotiPermission] = useState<NotificationPermission>(() => {
+    try {
+      if (!('Notification' in window)) return 'denied';
+      return Notification.permission;
+    } catch {
+      return 'denied';
+    }
+  });
+
+  const [notiEnabled, setNotiEnabled] = useState<boolean>(() => {
+    return localStorage.getItem('notification_enabled') !== 'false';
+  });
+
+  const [notiAdvanceMins, setNotiAdvanceMins] = useState<number>(() => {
+    return Number(localStorage.getItem('notification_advance_minutes')) || 10;
+  });
+
+  const [alertHistory, setAlertHistory] = useState<any[]>(() => {
+    try {
+      return JSON.parse(localStorage.getItem('notification_alert_history') || '[]');
+    } catch {
+      return [];
+    }
+  });
+
+  const handleRequestPermission = async () => {
+    try {
+      const { requestNotificationPermission } = await import('../utils/notifications');
+      const perm = await requestNotificationPermission();
+      setNotiPermission(perm);
+      if (perm === 'granted') {
+        triggerAlert('System browser notification permission GRANTED!', 'success');
+        const { triggerNativeNotification } = await import('../utils/notifications');
+        triggerNativeNotification('🔔 Space Workspace Connected', 'Notifications are beautifully configured, study hard!');
+      } else {
+        triggerAlert('Notification permission denied or blocked.', 'error');
+      }
+    } catch {
+      triggerAlert('Browser permission request failed.', 'error');
+    }
+  };
+
+  const handleToggleEnabled = (checked: boolean) => {
+    setNotiEnabled(checked);
+    localStorage.setItem('notification_enabled', String(checked));
+    triggerAlert(checked ? 'Reminders active for classroom schedules & deadlines!' : 'Notifications silenced.', 'success');
+  };
+
+  const handleSaveAdvanceMins = (mins: number) => {
+    setNotiAdvanceMins(mins);
+    localStorage.setItem('notification_advance_minutes', String(mins));
+    triggerAlert(`Trigger threshold updated to ${mins} minutes before block starts!`, 'success');
+  };
+
+  const handleTriggerTest = async () => {
+    try {
+      const { triggerNativeNotification } = await import('../utils/notifications');
+      const result = triggerNativeNotification(
+        '🔔 Timetable Alert Demo', 
+        'This is an advanced mock reminder block designed for Mac, Windows and iOS/Android!'
+      );
+      if (!result && notiPermission !== 'granted') {
+        triggerAlert('Check browser permission block list to test actual system sounds.', 'error');
+      } else {
+        triggerAlert('Native desktop banner demo triggered!', 'success');
+        
+        // Add to history list immediately
+        const newLog = {
+          id: `test-log-${Date.now()}`,
+          time: new Date().toLocaleTimeString(),
+          type: 'test',
+          title: 'Timetable Alert Demo',
+          message: 'System ticker desktop reminder tested successfully.'
+        };
+        const updatedLogs = [newLog, ...alertHistory].slice(0, 30);
+        setAlertHistory(updatedLogs);
+        localStorage.setItem('notification_alert_history', JSON.stringify(updatedLogs));
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleClearHistory = () => {
+    setAlertHistory([]);
+    localStorage.removeItem('notification_alert_history');
+    triggerAlert('Alert log cleared successfully.', 'success');
+  };
 
   const handleUpdateProfile = (e: React.FormEvent) => {
     e.preventDefault();
@@ -266,6 +357,132 @@ export default function Settings({ state, updateState }: SettingsProps) {
               <Upload className="w-3.5 h-3.5" /> Restore Payload
             </button>
           </form>
+        </div>
+      </div>
+
+      {/* Dynamic Browser Notification Settings full-width card */}
+      <div className="lg:col-span-12 bg-white p-6 rounded-2xl border border-gray-100 shadow-xs flex flex-col space-y-5" id="browser-notifications-card">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-gray-50 pb-3">
+          <div>
+            <h2 className="text-base font-bold text-slate-800 flex items-center gap-2">
+              <Bell className="w-5 h-5 text-teal-600" /> Academic & Personal Browser Notifications
+            </h2>
+            <p className="text-xs text-gray-400">Receive schedule and assignment alerts directly on your mac, phone, or tablet</p>
+          </div>
+          
+          <div className="flex items-center gap-2">
+            <span className={`text-[10px] font-mono px-2 py-1 rounded-full font-bold ${
+              notiPermission === 'granted' ? 'bg-emerald-55 text-emerald-700 border border-emerald-100 font-bold' :
+              notiPermission === 'denied' ? 'bg-rose-55 text-rose-700 border border-rose-100 font-bold' :
+              'bg-amber-55 text-amber-700 border border-amber-100 font-bold'
+            }`}>
+              SYSTEM STATE: {notiPermission.toUpperCase()}
+            </span>
+
+            {notiPermission !== 'granted' && (
+              <button
+                type="button"
+                onClick={handleRequestPermission}
+                className="px-3 py-1 bg-teal-600 hover:bg-teal-700 text-white font-bold text-[11px] rounded-lg shadow-3xs cursor-pointer hover:shadow-2xs transition"
+              >
+                Request Access
+              </button>
+            )}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+          {/* Controls column */}
+          <div className="md:col-span-6 space-y-4">
+            <div className="flex items-center justify-between p-3.5 bg-slate-50/50 rounded-xl border border-gray-100">
+              <div>
+                <label className="text-xs font-bold text-slate-700 block">Classroom & Event Reminders</label>
+                <span className="text-[10px] text-gray-400">Trigger active audio and slide banner alerts before slots begin</span>
+              </div>
+              <input
+                type="checkbox"
+                checked={notiEnabled}
+                onChange={e => handleToggleEnabled(e.target.checked)}
+                className="w-4 h-4 rounded text-teal-600 border-gray-300 focus:ring-teal-500 cursor-pointer"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-[10px] text-slate-400 font-extrabold uppercase font-mono tracking-wider">Reminder Threshold Trigger</label>
+              <select
+                value={notiAdvanceMins}
+                onChange={e => handleSaveAdvanceMins(Number(e.target.value))}
+                disabled={!notiEnabled}
+                className="w-full px-3 py-2 bg-slate-50 border border-gray-150 rounded-xl text-xs font-semibold disabled:opacity-50 font-bold"
+              >
+                <option value={5}>⏰ 5 Minutes before slot starts</option>
+                <option value={10}>⏰ 10 Minutes before slot starts (Default)</option>
+                <option value={15}>⏰ 15 Minutes before slot starts</option>
+                <option value={30}>⏰ 30 Minutes before slot starts</option>
+                <option value={60}>⏰ 1 Hour before slot starts</option>
+              </select>
+            </div>
+
+            <div className="p-4 bg-indigo-50/20 border border-indigo-100/55 rounded-xl space-y-3">
+              <div className="flex items-center gap-2">
+                <Volume2 className="w-4 h-4 text-indigo-650" />
+                <span className="text-xs font-black text-indigo-900">Audio Ping & Diagnostic Suite</span>
+              </div>
+              <p className="text-[10px] text-indigo-805 leading-relaxed">
+                Test how push notifications will look and sound natively on your system. Keep this background tab open to receive timely alerts during studies!
+              </p>
+              <button
+                type="button"
+                onClick={handleTriggerTest}
+                className="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold flex items-center gap-1 shadow-3xs cursor-pointer transition"
+              >
+                🔔 Test System Alert
+              </button>
+            </div>
+          </div>
+
+          {/* History log column */}
+          <div className="md:col-span-6 flex flex-col justify-between">
+            <div className="space-y-2 flex-1 flex flex-col">
+              <div className="flex justify-between items-center pb-1">
+                <label className="text-[10px] text-slate-400 font-extrabold uppercase font-mono tracking-wider flex items-center gap-1.5">
+                  <History className="w-3.5 h-3.5" /> Fired Alerts Dashboard Log
+                </label>
+                {alertHistory.length > 0 && (
+                  <button
+                    onClick={handleClearHistory}
+                    className="text-[10px] text-rose-500 hover:underline font-bold cursor-pointer"
+                  >
+                    Clear Log
+                  </button>
+                )}
+              </div>
+
+              <div className="bg-gray-50/50 p-3 rounded-xl border border-gray-100 overflow-y-auto max-h-[180px] flex-1 min-h-[140px] space-y-1.5" id="notification-logs">
+                {alertHistory.length === 0 ? (
+                  <div className="h-full flex flex-col items-center justify-center text-center text-gray-400 py-6">
+                    <HelpCircle className="w-6 h-6 text-gray-300 mb-1" />
+                    <span className="text-[10px] font-bold uppercase tracking-wider font-mono">No notifications triggered yet</span>
+                    <span className="text-[9px] text-gray-400 mt-0.5">Alerts for upcoming modules and milestones will log here</span>
+                  </div>
+                ) : (
+                  alertHistory.map((log: any) => (
+                    <div 
+                      key={log.id}
+                      className="p-2 border-b border-gray-100 last:border-0 flex items-start justify-between gap-2 bg-white rounded-md shadow-3xs"
+                    >
+                      <div className="space-y-0.5 text-left">
+                        <span className="text-[9px] font-black uppercase tracking-wide text-teal-600 font-mono">[{log.type}]</span>
+                        <div className="text-xs font-bold text-gray-700 leading-snug">{log.title}</div>
+                        <div className="text-[10px] text-gray-400 font-medium leading-normal">{log.message}</div>
+                      </div>
+                      <span className="text-[9px] text-gray-300 font-mono text-right font-semibold whitespace-nowrap">{log.time}</span>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 

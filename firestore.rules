@@ -1,0 +1,166 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default Deny Rule
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions (Pillar 3 & 4)
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // Entity Validations (Pillar 2 - Anti-Update-Gap)
+    function isValidProfile(data) {
+      return data.keys().hasAll(['name', 'waterGoal', 'calorieGoal', 'sleepGoal', 'studyGoal'])
+        && data.keys().size() == 5
+        && data.name is string && data.name.size() <= 100
+        && data.waterGoal is int && data.waterGoal >= 0 && data.waterGoal <= 100
+        && data.calorieGoal is int && data.calorieGoal >= 0 && data.calorieGoal <= 20000
+        && data.sleepGoal is int && data.sleepGoal >= 0 && data.sleepGoal <= 24
+        && data.studyGoal is int && data.studyGoal >= 0 && data.studyGoal <= 24;
+    }
+
+    function isValidTimetableEvent(data) {
+      return data.keys().hasAll(['id', 'date', 'startTime', 'endTime', 'title', 'category'])
+        && data.id is string
+        && data.date is string && data.date.matches('^\\d{4}-\\d{2}-\\d{2}$')
+        && data.startTime is string && data.startTime.matches('^\\d{2}:\\d{2}$')
+        && data.endTime is string && data.endTime.matches('^\\d{2}:\\d{2}$')
+        && data.title is string && data.title.size() <= 200
+        && data.category is string && data.category.size() <= 50;
+    }
+
+    function isValidStudyDeadline(data) {
+      return data.keys().hasAll(['id', 'subjectId', 'title', 'dueDate', 'completed'])
+        && data.id is string
+        && data.subjectId is string
+        && data.title is string && data.title.size() <= 200
+        && data.dueDate is string && data.dueDate.matches('^\\d{4}-\\d{2}-\\d{2}$')
+        && data.completed is bool;
+    }
+
+    function isValidFocusTask(data) {
+      return data.keys().hasAll(['id', 'title', 'priority', 'completed', 'date', 'category'])
+        && data.id is string
+        && data.title is string && data.title.size() <= 500
+        && (data.priority == 'high' || data.priority == 'medium' || data.priority == 'low')
+        && data.completed is bool
+        && data.date is string && data.date.matches('^\\d{4}-\\d{2}-\\d{2}$')
+        && data.category is string && data.category.size() <= 100;
+    }
+
+    function isValidWorkoutSession(data) {
+      return data.keys().hasAll(['id', 'title', 'date', 'durationMinutes', 'caloriesBurned'])
+        && data.id is string
+        && data.title is string && data.title.size() <= 200
+        && data.date is string && data.date.matches('^\\d{4}-\\d{2}-\\d{2}$')
+        && data.durationMinutes is int && data.durationMinutes >= 0 && data.durationMinutes <= 1440
+        && data.caloriesBurned is int && data.caloriesBurned >= 0 && data.caloriesBurned <= 20000;
+    }
+
+    function isValidMealLog(data) {
+      return data.keys().hasAll(['id', 'name', 'calories', 'protein', 'carbs', 'fat', 'mealType', 'date'])
+        && data.id is string
+        && data.name is string && data.name.size() <= 200
+        && data.calories is int && data.calories >= 0 && data.calories <= 10000
+        && data.protein is int && data.protein >= 0 && data.protein <= 1000
+        && data.carbs is int && data.carbs >= 0 && data.carbs <= 1000
+        && data.fat is int && data.fat >= 0 && data.fat <= 1000
+        && data.mealType is string && data.mealType.size() <= 100
+        && data.date is string && data.date.matches('^\\d{4}-\\d{2}-\\d{2}$');
+    }
+
+    function isValidHabitItem(data) {
+      return data.keys().hasAll(['id', 'name', 'category', 'targetDaysPerWeek', 'createdAt'])
+        && data.id is string
+        && data.name is string && data.name.size() <= 200
+        && data.category is string && data.category.size() <= 100
+        && data.targetDaysPerWeek is int && data.targetDaysPerWeek >= 1 && data.targetDaysPerWeek <= 7
+        && data.createdAt is string && data.createdAt.matches('^\\d{4}-\\d{2}-\\d{2}$');
+    }
+
+    function isValidSubjectItem(data) {
+      return data.keys().hasAll(['id', 'name', 'color', 'notes'])
+        && data.id is string
+        && data.name is string && data.name.size() <= 200
+        && data.color is string && data.color.size() <= 100
+        && data.notes is string && data.notes.size() <= 5000;
+    }
+
+    // ----------------- Match Boundaries (Pillar 6, 8) -----------------
+    match /users/{userId} {
+      allow get: if isOwner(userId);
+      allow create: if isOwner(userId) && isValidProfile(incoming());
+      allow update: if isOwner(userId) && isValidProfile(incoming());
+      allow delete: if isOwner(userId);
+
+      // Sub-collections
+      match /timetable/{eventId} {
+        allow list, get: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidId(eventId) && isValidTimetableEvent(incoming());
+        allow update: if isOwner(userId) && isValidId(eventId) && isValidTimetableEvent(incoming());
+        allow delete: if isOwner(userId);
+      }
+
+      match /deadlines/{deadlineId} {
+        allow list, get: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidId(deadlineId) && isValidStudyDeadline(incoming());
+        allow update: if isOwner(userId) && isValidId(deadlineId) && isValidStudyDeadline(incoming());
+        allow delete: if isOwner(userId);
+      }
+
+      match /focusQueue/{taskId} {
+        allow list, get: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidId(taskId) && isValidFocusTask(incoming());
+        allow update: if isOwner(userId) && isValidId(taskId) && isValidFocusTask(incoming());
+        allow delete: if isOwner(userId);
+      }
+
+      match /workouts/{workoutId} {
+        allow list, get: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidId(workoutId) && isValidWorkoutSession(incoming());
+        allow update: if isOwner(userId) && isValidId(workoutId) && isValidWorkoutSession(incoming());
+        allow delete: if isOwner(userId);
+      }
+
+      match /meals/{mealId} {
+        allow list, get: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidId(mealId) && isValidMealLog(incoming());
+        allow update: if isOwner(userId) && isValidId(mealId) && isValidMealLog(incoming());
+        allow delete: if isOwner(userId);
+      }
+
+      match /habits/{habitId} {
+        allow list, get: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidId(habitId) && isValidHabitItem(incoming());
+        allow update: if isOwner(userId) && isValidId(habitId) && isValidHabitItem(incoming());
+        allow delete: if isOwner(userId);
+      }
+
+      match /subjects/{subjectId} {
+        allow list, get: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidId(subjectId) && isValidSubjectItem(incoming());
+        allow update: if isOwner(userId) && isValidId(subjectId) && isValidSubjectItem(incoming());
+        allow delete: if isOwner(userId);
+      }
+    }
+  }
+}

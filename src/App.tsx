@@ -6,7 +6,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Compass, BookOpen, Dumbbell, Utensils, CalendarDays, 
-  Moon, TrendingUp, Sliders, Paperclip, CheckCircle2, User, Github, Calendar
+  Moon, TrendingUp, Sliders, Paperclip, CheckCircle2, User, Github, Calendar, LogOut
 } from 'lucide-react';
 
 // Subcomponents
@@ -20,10 +20,13 @@ import WeeklyReview from './components/WeeklyReview';
 import Settings from './components/Settings';
 import FilesHub from './components/FilesHub';
 import DeadlinesCalendar from './components/DeadlinesCalendar';
+import Login from './components/Login';
 
 // State Helpers
 import { TrackerState } from './types';
 import { loadState, saveState, getLocalDateString } from './utils/storage';
+import { TrackerUser, signOut, getFirebaseAuth } from './utils/firebase';
+import { checkTrackerReminders, getNotificationPermission } from './utils/notifications';
 
 type AppTab = 'dashboard' | 'study' | 'gym' | 'nutrition' | 'habits' | 'sleep' | 'files' | 'weekly' | 'deadlines' | 'settings';
 
@@ -32,14 +35,99 @@ export default function App() {
   const [selectedDate, setSelectedDate] = useState<string>(() => getLocalDateString(new Date()));
   const [activeTab, setActiveTab] = useState<AppTab>('dashboard');
 
+  // User Authentication State
+  const [user, setUser] = useState<TrackerUser | null>(() => {
+    try {
+      const saved = localStorage.getItem('daily_tracker_current_user');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+
+  // Handle successful login
+  const handleLoginSuccess = (usr: TrackerUser) => {
+    setUser(usr);
+    localStorage.setItem('daily_tracker_current_user', JSON.stringify(usr));
+    
+    // Auto-update profile name in internal state to logged in user's parsed name
+    if (usr.displayName) {
+      updateState({
+        ...state,
+        profile: {
+          ...state.profile,
+          name: usr.displayName
+        }
+      });
+    }
+  };
+
+  // Sign out handler
+  const handleSignOut = async () => {
+    try {
+      const auth = getFirebaseAuth();
+      if (auth) {
+        await signOut(auth);
+      }
+    } catch (e) {
+      console.warn("Real Firebase sign out failed, carrying out client-only session wipe.", e);
+    }
+    setUser(null);
+    localStorage.removeItem('daily_tracker_current_user');
+  };
+
   // Trigger state persistence on changes
   useEffect(() => {
     saveState(state);
   }, [state]);
 
+  // Global browser notifications check ticker
+  useEffect(() => {
+    const triggerNotificationTicker = () => {
+      const isNotifyEnabled = localStorage.getItem('notification_enabled') !== 'false';
+      const minAheadSetting = Number(localStorage.getItem('notification_advance_minutes')) || 10;
+      
+      if (isNotifyEnabled && getNotificationPermission() === 'granted') {
+        const newAlerts = checkTrackerReminders(state, minAheadSetting);
+        if (newAlerts.length > 0) {
+          try {
+            const storedLogs = JSON.parse(localStorage.getItem('notification_alert_history') || '[]');
+            localStorage.setItem(
+              'notification_alert_history', 
+              JSON.stringify([...newAlerts, ...storedLogs].slice(0, 35))
+            );
+          } catch (e) {
+            console.error(e);
+          }
+        }
+      }
+    };
+
+    // Check on mount, then ticker checks every 30 seconds
+    triggerNotificationTicker();
+    const tickerInterval = setInterval(triggerNotificationTicker, 30000);
+    return () => clearInterval(tickerInterval);
+  }, [state]);
+
   const updateState = (newState: TrackerState) => {
     setState(newState);
   };
+
+  // If user session is not found, launch the Login Portal Overlay
+  if (!user) {
+    return (
+      <Login 
+        onLoginSuccess={handleLoginSuccess}
+        onSkip={() => handleLoginSuccess({
+          uid: 'guest-user',
+          displayName: 'Guest Student',
+          email: null,
+          photoURL: null,
+          providerId: 'guest'
+        })}
+      />
+    );
+  }
 
   // Nav items config
   const navItems = [
@@ -73,10 +161,21 @@ export default function App() {
           </div>
 
           {/* Quick Profile Indicators */}
-          <div className="flex items-center gap-2 bg-gray-50/50 py-1 px-3 rounded-lg border border-gray-100" id="header-profile-tag">
-            <User className="w-4 h-4 text-gray-400" />
-            <span className="text-xs font-bold text-gray-700">{state.profile.name}</span>
-            <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse ml-1" />
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 bg-gray-50/50 py-1.5 px-3 rounded-lg border border-gray-100" id="header-profile-tag">
+              <User className="w-4 h-4 text-gray-400" />
+              <span className="text-xs font-bold text-gray-700">{state.profile.name}</span>
+              <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse ml-1" />
+            </div>
+            
+            <button
+              onClick={handleSignOut}
+              className="p-1.5 text-gray-400 hover:text-rose-600 hover:bg-rose-50 border border-transparent rounded-lg transition-all cursor-pointer flex items-center justify-center"
+              title="Sign Out of Space Workspace"
+              id="header-signout-btn"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
           </div>
 
         </div>

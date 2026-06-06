@@ -1,0 +1,176 @@
+{
+  "entities": {
+    "Profile": {
+      "title": "Profile",
+      "description": "User profile goals and name preferences",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "waterGoal": { "type": "integer" },
+        "calorieGoal": { "type": "integer" },
+        "sleepGoal": { "type": "integer" },
+        "studyGoal": { "type": "integer" }
+      },
+      "required": ["name", "waterGoal", "calorieGoal", "sleepGoal", "studyGoal"]
+    },
+    "TimetableEvent": {
+      "title": "TimetableEvent",
+      "description": "Event on the timetable calendar blocks",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "date": { "type": "string" },
+        "startTime": { "type": "string" },
+        "endTime": { "type": "string" },
+        "title": { "type": "string" },
+        "category": { "type": "string" },
+        "completed": { "type": "boolean" }
+      },
+      "required": ["id", "date", "startTime", "endTime", "title", "category"]
+    },
+    "FocusTask": {
+      "title": "FocusTask",
+      "description": "Focus task with prioritizations",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "priority": { "type": "string" },
+        "completed": { "type": "boolean" },
+        "date": { "type": "string" },
+        "category": { "type": "string" },
+        "dueDate": { "type": "string" }
+      },
+      "required": ["id", "title", "priority", "completed", "date", "category"]
+    },
+    "SubjectItem": {
+      "title": "SubjectItem",
+      "description": "Academic subjects listed under StudyHub",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "color": { "type": "string" },
+        "notes": { "type": "string" },
+        "category": { "type": "string" }
+      },
+      "required": ["id", "name", "color", "notes"]
+    },
+    "StudySession": {
+      "title": "StudySession",
+      "description": "Logged actual focus study minutes duration",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "subjectId": { "type": "string" },
+        "date": { "type": "string" },
+        "durationMinutes": { "type": "integer" },
+        "notes": { "type": "string" }
+      },
+      "required": ["id", "subjectId", "date", "durationMinutes", "notes"]
+    },
+    "Flashcard": {
+      "title": "Flashcard",
+      "description": "Interactive flashcard for Q&A review study sessions",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "subjectId": { "type": "string" },
+        "question": { "type": "string" },
+        "answer": { "type": "string" }
+      },
+      "required": ["id", "subjectId", "question", "answer"]
+    },
+    "StudyDeadline": {
+      "title": "StudyDeadline",
+      "description": "Assignment or assessment target deadline milestones",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "subjectId": { "type": "string" },
+        "title": { "type": "string" },
+        "dueDate": { "type": "string" },
+        "completed": { "type": "boolean" },
+        "priority": { "type": "string" },
+        "notes": { "type": "string" }
+      },
+      "required": ["id", "subjectId", "title", "dueDate", "completed"]
+    },
+    "WorkoutSession": {
+      "title": "WorkoutSession",
+      "description": "Logged gym training details",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "date": { "type": "string" },
+        "durationMinutes": { "type": "integer" },
+        "caloriesBurned": { "type": "integer" }
+      },
+      "required": ["id", "title", "date", "durationMinutes", "caloriesBurned"]
+    },
+    "MealLog": {
+      "title": "MealLog",
+      "description": "Logged nutrition intake food item",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "calories": { "type": "integer" },
+        "protein": { "type": "integer" },
+        "carbs": { "type": "integer" },
+        "fat": { "type": "integer" },
+        "mealType": { "type": "string" },
+        "date": { "type": "string" }
+      },
+      "required": ["id", "name", "calories", "protein", "carbs", "fat", "mealType", "date"]
+    },
+    "HabitItem": {
+      "title": "HabitItem",
+      "description": "Daily recurring habits to check off",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "category": { "type": "string" },
+        "targetDaysPerWeek": { "type": "integer" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "name", "category", "targetDaysPerWeek", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "Profile",
+      "description": "Base profile document containing core tracker settings per user"
+    },
+    "/users/{userId}/timetable/{eventId}": {
+      "schema": "TimetableEvent",
+      "description": "Subevent items on a user's timetable log"
+    },
+    "/users/{userId}/deadlines/{deadlineId}": {
+      "schema": "StudyDeadline",
+      "description": "Target classroom milestones or assignments due"
+    },
+    "/users/{userId}/focusQueue/{taskId}": {
+      "schema": "FocusTask",
+      "description": "Short term focus checklist items"
+    },
+    "/users/{userId}/workouts/{workoutId}": {
+      "schema": "WorkoutSession",
+      "description": "Logged physical workout activities"
+    },
+    "/users/{userId}/meals/{mealId}": {
+      "schema": "MealLog",
+      "description": "Recorded nutritional food logs"
+    },
+    "/users/{userId}/habits/{habitId}": {
+      "schema": "HabitItem",
+      "description": "Custom habits with specific target metrics"
+    },
+    "/users/{userId}/subjects/{subjectId}": {
+      "schema": "SubjectItem",
+      "description": "Academic subjects configured under the Study segment"
+    }
+  }
+}
