@@ -107,60 +107,7 @@ service cloud.firestore {
 
     // ----------------- Match Boundaries (Pillar 6, 8) -----------------
     match /users/{userId} {
-      allow get: if isOwner(userId);
-      allow create: if isOwner(userId) && isValidProfile(incoming());
-      allow update: if isOwner(userId) && isValidProfile(incoming());
-      allow delete: if isOwner(userId);
-
-      // Sub-collections
-      match /timetable/{eventId} {
-        allow list, get: if isOwner(userId);
-        allow create: if isOwner(userId) && isValidId(eventId) && isValidTimetableEvent(incoming());
-        allow update: if isOwner(userId) && isValidId(eventId) && isValidTimetableEvent(incoming());
-        allow delete: if isOwner(userId);
-      }
-
-      match /deadlines/{deadlineId} {
-        allow list, get: if isOwner(userId);
-        allow create: if isOwner(userId) && isValidId(deadlineId) && isValidStudyDeadline(incoming());
-        allow update: if isOwner(userId) && isValidId(deadlineId) && isValidStudyDeadline(incoming());
-        allow delete: if isOwner(userId);
-      }
-
-      match /focusQueue/{taskId} {
-        allow list, get: if isOwner(userId);
-        allow create: if isOwner(userId) && isValidId(taskId) && isValidFocusTask(incoming());
-        allow update: if isOwner(userId) && isValidId(taskId) && isValidFocusTask(incoming());
-        allow delete: if isOwner(userId);
-      }
-
-      match /workouts/{workoutId} {
-        allow list, get: if isOwner(userId);
-        allow create: if isOwner(userId) && isValidId(workoutId) && isValidWorkoutSession(incoming());
-        allow update: if isOwner(userId) && isValidId(workoutId) && isValidWorkoutSession(incoming());
-        allow delete: if isOwner(userId);
-      }
-
-      match /meals/{mealId} {
-        allow list, get: if isOwner(userId);
-        allow create: if isOwner(userId) && isValidId(mealId) && isValidMealLog(incoming());
-        allow update: if isOwner(userId) && isValidId(mealId) && isValidMealLog(incoming());
-        allow delete: if isOwner(userId);
-      }
-
-      match /habits/{habitId} {
-        allow list, get: if isOwner(userId);
-        allow create: if isOwner(userId) && isValidId(habitId) && isValidHabitItem(incoming());
-        allow update: if isOwner(userId) && isValidId(habitId) && isValidHabitItem(incoming());
-        allow delete: if isOwner(userId);
-      }
-
-      match /subjects/{subjectId} {
-        allow list, get: if isOwner(userId);
-        allow create: if isOwner(userId) && isValidId(subjectId) && isValidSubjectItem(incoming());
-        allow update: if isOwner(userId) && isValidId(subjectId) && isValidSubjectItem(incoming());
-        allow delete: if isOwner(userId);
-      }
+      allow read, write: if isOwner(userId);
     }
   }
 }

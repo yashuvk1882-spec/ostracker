@@ -25,8 +25,9 @@ import Login from './components/Login';
 // State Helpers
 import { TrackerState } from './types';
 import { loadState, saveState, getLocalDateString } from './utils/storage';
-import { TrackerUser, signOut, getFirebaseAuth } from './utils/firebase';
+import { TrackerUser, signOut, getFirebaseAuth, getFirebaseFirestore } from './utils/firebase';
 import { checkTrackerReminders, getNotificationPermission } from './utils/notifications';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 
 type AppTab = 'dashboard' | 'study' | 'gym' | 'nutrition' | 'habits' | 'sleep' | 'files' | 'weekly' | 'deadlines' | 'settings';
 
@@ -76,10 +77,62 @@ export default function App() {
     localStorage.removeItem('daily_tracker_current_user');
   };
 
-  // Trigger state persistence on changes
+  // Load state from Firestore when logged in
+  useEffect(() => {
+    let active = true;
+    const fetchFirestoreState = async () => {
+      if (!user || user.uid === 'guest-user') return;
+      const db = getFirebaseFirestore();
+      if (!db) return;
+      
+      try {
+        const userDocRef = doc(db, 'users', user.uid);
+        const docSnap = await getDoc(userDocRef);
+        
+        if (active) {
+          if (docSnap.exists()) {
+            const remoteState = docSnap.data() as TrackerState;
+            // Validate basic shape
+            if (remoteState.profile && remoteState.timetable) {
+              setState(remoteState);
+            }
+          } else {
+            // First time login - upload current local state to initialize Firestore
+            await setDoc(userDocRef, state);
+          }
+        }
+      } catch (err) {
+        console.warn("Could not load state from Firestore, using client storage:", err);
+      }
+    };
+    
+    fetchFirestoreState();
+    return () => {
+      active = false;
+    };
+  }, [user]);
+
+  // Trigger state persistence on changes (local + remote)
   useEffect(() => {
     saveState(state);
-  }, [state]);
+    
+    // Remote firestore synchronization
+    const syncToFirestore = async () => {
+      if (!user || user.uid === 'guest-user') return;
+      const db = getFirebaseFirestore();
+      if (!db) return;
+      try {
+        const userDocRef = doc(db, 'users', user.uid);
+        await setDoc(userDocRef, state);
+      } catch (err) {
+        console.error("Failed to sync state to Firestore:", err);
+      }
+    };
+    
+    // Debounce to prevent massive write consumption and respect Firebase quotas
+    const timeoutId = setTimeout(syncToFirestore, 1000);
+    return () => clearTimeout(timeoutId);
+  }, [state, user]);
 
   // Global browser notifications check ticker
   useEffect(() => {
